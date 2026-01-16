@@ -4,6 +4,14 @@ base-devel
 linux-zen
 linux
 linux-firmware
+mesa
+lib32-mesa
+xf86-video-vmware
+xf86-video-intel
+xf86-video-amdgpu
+xf86-video-nouveau
+vulkan-intel
+vulkan-radeon
 intel-ucode
 amd-ucode
 efibootmgr

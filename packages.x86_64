@@ -19,6 +19,8 @@ wireplumber
 bluez
 bluez-utils
 blueman
+syslinux
+mkinitcpio-archiso
 
 # --- Desktop Environment (De "Avelon" Look) ---
 hyprland

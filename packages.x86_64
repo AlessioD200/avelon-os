@@ -2,6 +2,7 @@
 base
 base-devel
 linux-zen
+linux
 linux-firmware
 intel-ucode
 amd-ucode

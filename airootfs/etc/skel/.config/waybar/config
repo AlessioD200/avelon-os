@@ -52,7 +52,7 @@
             "car": "",
             "default": ["", "", ""]
         },
-        "on-click": "pavucontrol"
+        "on-click": "pavucontrol-qt"
     },
 
     "network": {
@@ -62,6 +62,7 @@
         "format-linked": "{ifname} (No IP)",
         "format-disconnected": "⚠ Disconnected",
         "format-alt": "{ifname}: {ipaddr}/{cidr}"
+	"on-click": "nm-connection-editor",
     },
 
     "battery": {

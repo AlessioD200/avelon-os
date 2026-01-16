@@ -1,0 +1,51 @@
+# --- Basis Systeem ---
+base
+base-devel
+linux-zen
+linux-firmware
+intel-ucode
+amd-ucode
+efibootmgr
+grub
+os-prober
+
+# --- Netwerk & Audio ---
+networkmanager
+network-manager-applet
+pipewire
+pipewire-alsa
+pipewire-pulse
+wireplumber
+bluez
+bluez-utils
+blueman
+
+# --- Desktop Environment (De "Avelon" Look) ---
+hyprland
+xdg-desktop-portal-hyprland
+waybar
+wofi
+swww
+mako
+polkit-gnome
+grim
+slurp
+wl-clipboard
+
+# --- Apps & Tools ---
+kitty
+thunar
+thunar-archive-plugin
+thunar-volman
+gvfs
+firefox
+neofetch
+nano
+git
+unzip
+ttf-jetbrains-mono-nerd
+noto-fonts-emoji
+papirus-icon-theme
+
+# --- Installer ---
+calamares

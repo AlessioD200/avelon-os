@@ -1,0 +1,81 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "JetBrainsMono Nerd Font";
+    font-weight: bold;
+    font-size: 14px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: rgba(30, 30, 46, 0.85); /* Donkere, doorzichtige kleur */
+    color: #cdd6f4;
+}
+
+tooltip {
+    background: #1e1e2e;
+    border-radius: 10px;
+    border-width: 2px;
+    border-style: solid;
+    border-color: #11111b;
+}
+
+#workspaces button {
+    padding: 5px;
+    color: #313244;
+    margin-right: 5px;
+}
+
+#workspaces button.active {
+    color: #a6e3a1; /* Avelon Groen accent */
+}
+
+#workspaces button.focused {
+    color: #a6e3a1;
+    background: #eba0ac;
+    border-radius: 10px;
+}
+
+#workspaces button:hover {
+    background: #11111b;
+    color: #cdd6f4;
+    border-radius: 10px;
+}
+
+#clock,
+#battery,
+#pulseaudio,
+#network,
+#tray {
+    padding: 0 10px;
+    color: #f5c2e7;
+    border-radius: 10px;
+    margin: 0 5px;
+}
+
+#clock {
+    color: #89b4fa;
+}
+
+#battery {
+    color: #a6e3a1;
+}
+
+#battery.charging {
+    color: #a6e3a1;
+}
+
+#battery.warning:not(.charging) {
+    background-color: #f38ba8;
+    color: #1e1e2e;
+    border-radius: 5px;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+label:focus {
+    background-color: #000000;
+}

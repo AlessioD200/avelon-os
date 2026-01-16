@@ -19,8 +19,7 @@ wireplumber
 bluez
 bluez-utils
 blueman
-syslinux
-mkinitcpio-archiso
+
 
 # --- Desktop Environment (De "Avelon" Look) ---
 hyprland
@@ -50,4 +49,5 @@ noto-fonts-emoji
 papirus-icon-theme
 
 # --- Installer ---
-calamares
+syslinux
+mkinitcpio-archiso

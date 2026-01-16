@@ -49,5 +49,6 @@ noto-fonts-emoji
 papirus-icon-theme
 
 # --- Installer ---
+archinstall
 syslinux
 mkinitcpio-archiso

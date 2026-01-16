@@ -1,45 +1,57 @@
 #!/bin/bash
 
-# Avelon OS Build Script
-# Dit script moet worden uitgevoerd op een Arch Linux systeem (of in een VM).
+# Avelon OS Build Script - V2 (Met User & SDDM Fix)
+set -e
 
-set -e # Stop direct als er iets fout gaat
-u_name="avelon-user" # Tijdelijke gebruikersnaam voor in de build omgeving
+echo "--- 🚀 Avelon OS Builder V2 gestart ---"
 
-echo "--- 🚀 Avelon OS Builder gestart ---"
-
-# 1. Check of we als Root draaien (nodig voor het bouwen)
+# 1. Check Root
 if [ "$EUID" -ne 0 ]; then
-  echo "⚠️  Draai dit script als root (gebruik sudo ./build.sh)"
+  echo "⚠️  Draai dit script als root (sudo ./build.sh)"
   exit
 fi
 
-# 2. Check of archiso is geïnstalleerd
-if ! command -v mkarchiso &> /dev/null; then
-    echo "⚠️  Archiso is niet geïnstalleerd. Installeren..."
-    pacman -Sy --noconfirm archiso
-fi
-
-# 3. Werkmap aanmaken
-echo "--- 📁 Werkmappen voorbereiden... ---"
+# 2. Schoonmaak (Cruciaal voor nieuwe poging)
+echo "--- 🧹 Oude bestanden opruimen... ---"
 rm -rf work out build_env
 mkdir -p work out build_env
 
-# 4. Kopieer de basis Arch Linux bestanden (Releng profiel)
-# Dit zorgt dat de bootloaders (GRUB/Syslinux) goed staan.
+# 3. Basis kopiëren
+echo "--- 📦 Basis bestanden kopiëren... ---"
 cp -r /usr/share/archiso/configs/releng/* build_env/
 
-# 5. Voeg JOUW Avelon bestanden toe aan de build omgeving
-echo "--- 🎨 Avelon OS configuratie toepassen... ---"
+# 4. Avelon Configs toepassen
+echo "--- 🎨 Configs en Packages kopiëren... ---"
 cp -r airootfs build_env/
 cp packages.x86_64 build_env/
 cp profiledef.sh build_env/
 
-# 6. Permissies goed zetten voor scripts
+# 5. Permissies goed zetten
 chmod +x build_env/airootfs/etc/skel/.config/hypr/*.conf 2>/dev/null || true
 
-# 7. De ISO bouwen!
-echo "--- 🔨 ISO wordt gebouwd... (Dit kan even duren) ---"
+# --- DE FIX: Gebruiker & SDDM instellen ---
+echo "--- 👤 Gebruiker 'avelon' aanmaken en SDDM activeren... ---"
+
+# We gebruiken 'arch-chroot' om commando's IN de nieuwe ISO uit te voeren
+# Dit zorgt dat de gebruiker en service echt bestaan in het systeem.
+arch-chroot build_env <<EOF
+    # 1. Maak gebruiker aan
+    useradd -m -G wheel -s /bin/bash avelon
+    
+    # 2. Zet wachtwoord op 'avelon' (zodat je kan inloggen)
+    echo "avelon:avelon" | chpasswd
+    
+    # 3. Geef sudo rechten (optioneel, handig voor testen)
+    echo "%wheel ALL=(ALL:ALL) ALL" >> /etc/sudoers
+    
+    # 4. Activeer het inlogscherm
+    systemctl enable sddm
+EOF
+# ------------------------------------------
+
+# 6. Bouwen maar!
+echo "--- 🔨 ISO wordt gebouwd... ---"
 mkarchiso -v -w work -o out build_env/
 
 echo "--- ✅ Klaar! Je ISO staat in de map 'out/' ---"
+echo "--- 👉 Log straks in met gebruiker: 'avelon' en wachtwoord: 'avelon' ---"

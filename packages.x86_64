@@ -12,6 +12,7 @@ vulkan-intel
 vulkan-radeon
 intel-ucode
 amd-ucode
+sddm
 efibootmgr
 grub
 os-prober

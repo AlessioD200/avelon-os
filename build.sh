@@ -1,37 +1,37 @@
 #!/bin/bash
-# Avelon OS Build Script - V4 (SDDM & Permission Fix)
+# Avelon OS Build Script - V5 (Calamares Edition)
 set -e
 
-echo "--- 🚀 Avelon OS Builder V4 gestart ---"
+echo "--- 🚀 Avelon OS Builder V5 gestart ---"
 
-# 1. Check Root
 if [ "$EUID" -ne 0 ]; then
   echo "⚠️  Draai dit script als root (sudo ./build.sh)"
   exit
 fi
 
-# 2. Schoonmaak
+# 1. Schoonmaak
 echo "--- 🧹 Oude bestanden opruimen... ---"
 rm -rf work out build_env
 mkdir -p work out build_env
 
-# 3. Basis kopiëren
+# 2. Basis kopiëren
 echo "--- 📦 Basis bestanden kopiëren... ---"
 cp -r /usr/share/archiso/configs/releng/* build_env/
 
-# 4. Avelon Configs toepassen
+# 3. Avelon Configs toepassen
 echo "--- 🎨 Configs en Packages kopiëren... ---"
 cp -r airootfs build_env/
 cp packages.x86_64 build_env/
+# KOPIEER ONZE NIEUWE PACMAN.CONF
+cp pacman.conf build_env/
 
-# --- STAP 5: FIX PERMISSIES & GEBRUIKER (Het probleem van het zwarte inlogscherm) ---
+# 4. Fix permissies en User
+chmod +x build_env/airootfs/etc/skel/.config/hypr/*.conf 2>/dev/null || true
 
-# A. Maak de Home map handmatig aan
+# --- User & SDDM Config ---
 mkdir -p build_env/airootfs/home/avelon
-# Kopieer de configs (Hyprland etc) direct naar de home map, niet alleen skel
 cp -r build_env/airootfs/etc/skel/. build_env/airootfs/home/avelon/
 
-# B. Maak de gebruiker aan met expliciete ID 1000
 mkdir -p build_env/airootfs/usr/lib/sysusers.d
 cat <<EOF > build_env/airootfs/usr/lib/sysusers.d/avelon.conf
 u avelon 1000 "Avelon User" /home/avelon /bin/bash
@@ -39,29 +39,24 @@ m avelon wheel
 m avelon video
 EOF
 
-# C. Activeer SDDM
 mkdir -p build_env/airootfs/etc/systemd/system/
 ln -sf /usr/lib/systemd/system/sddm.service build_env/airootfs/etc/systemd/system/display-manager.service
 
-# D. Configureer SDDM voor Auto-Login (Sla het scherm over)
 mkdir -p build_env/airootfs/etc/sddm.conf.d
 cat <<EOF > build_env/airootfs/etc/sddm.conf.d/autologin.conf
 [Autologin]
 User=avelon
 Session=hyprland
 Relogin=false
-
 [Theme]
 Current=maldives
 EOF
 
-# E. BELANGRIJK: We moeten profiledef.sh herschrijven om eigenaarschap van /home/avelon te regelen
-# Dit zorgt dat map 'avelon' eigendom is van id 1000 (de gebruiker) en niet root.
 cat <<EOF > build_env/profiledef.sh
 #!/usr/bin/env bash
 iso_name="avelon-os"
 iso_label="AVELON_\$(date +%Y%m)"
-iso_publisher="Avelon Team <https://github.com/AlessioD200/avelon-os>"
+iso_publisher="Avelon Team"
 iso_application="Avelon OS Live"
 iso_version="\$(date +%Y.%m.%d)"
 install_dir="arch"
@@ -81,8 +76,8 @@ file_permissions=(
 )
 EOF
 
-# 6. Bouwen maar!
+# 5. START DE BOUW (Met de nieuwe pacman.conf)
 echo "--- 🔨 ISO wordt gebouwd... ---"
-mkarchiso -v -w work -o out build_env/
+mkarchiso -v -w work -o out -C pacman.conf build_env/
 
 echo "--- ✅ Klaar! Je ISO staat in de map 'out/' ---"

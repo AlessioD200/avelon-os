@@ -16,6 +16,7 @@ sddm
 efibootmgr
 grub
 os-prober
+kernel-modules-hook
 
 # --- Netwerk & Audio ---
 networkmanager
@@ -58,5 +59,7 @@ papirus-icon-theme
 
 # --- Installer ---
 archinstall
+calamares
+calamares-config-default-git
 syslinux
 mkinitcpio-archiso

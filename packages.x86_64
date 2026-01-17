@@ -60,6 +60,5 @@ papirus-icon-theme
 # --- Installer ---
 archinstall
 calamares
-calamares-config-default-git
 syslinux
 mkinitcpio-archiso

@@ -52,7 +52,7 @@
             "car": "",
             "default": ["", "", ""]
         },
-        "on-click": "pavucontrol-qt"
+        "on-click": "pavucontrol"
     },
 
     "network": {
@@ -61,8 +61,8 @@
         "tooltip-format": "{ifname} via {gwaddr}",
         "format-linked": "{ifname} (No IP)",
         "format-disconnected": "⚠ Disconnected",
-        "format-alt": "{ifname}: {ipaddr}/{cidr}"
-	"on-click": "nm-connection-editor",
+        "format-alt": "{ifname}: {ipaddr}/{cidr}",
+        "on-click": "nm-connection-editor"
     },
 
     "battery": {
@@ -75,5 +75,10 @@
         "format-charging": " {capacity}%",
         "format-plugged": " {capacity}%",
         "format-icons": ["", "", "", "", ""]
+    },
+
+    "tray": {
+        "icon-size": 21,
+        "spacing": 10
     }
 }

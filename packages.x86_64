@@ -42,7 +42,7 @@ slurp
 wl-clipboard
 
 # --- Apps & Tools ---
-kitty
+foot
 thunar
 thunar-archive-plugin
 thunar-volman

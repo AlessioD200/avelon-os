@@ -1,0 +1,26 @@
+---
+componentName:  avelon
+welcomeStyle:   calamares
+
+strings:
+    productName:         Avelon OS
+    shortProductName:    Avelon
+    version:             2026.1
+    shortVersion:        2026.1
+    versionedName:       Avelon OS 2026.1
+    shortVersionedName:  Avelon 2026.1
+    bootloaderEntryName: Avelon OS
+
+images:
+    productLogo:         "squid.png"
+    productIcon:         "squid.png"
+    productWelcome:      "squid.png"
+
+style:
+   sidebarBackground:    "#292F34"
+   sidebarText:          "#FFFFFF"
+   sidebarTextSelect:    "#292F34"
+   sidebarTextHighlight: "#D35400"
+
+slideshow:               []
+slideshowAPI:            1

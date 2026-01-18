@@ -1,49 +1,49 @@
 #!/bin/bash
-# Avelon OS Build Script - Final Version
+# Avelon OS Build Script - V7 (Installer Fix & Auto-Password)
 set -e
 
-echo "--- 🚀 Avelon OS Builder gestart ---"
+echo "--- 🚀 Avelon OS Builder V7 gestart ---"
 
 if [ "$EUID" -ne 0 ]; then
   echo "⚠️  Draai dit script als root (sudo ./build.sh)"
   exit 1
 fi
 
-# 1. Schoonmaak
-echo "--- 🧹 Oude bestanden opruimen... ---"
+# 1. Schoonmaak (Ook de conflicterende Calamares modules!)
+echo "--- 🧹 Oude bestanden en conflicten opruimen... ---"
 rm -rf work out build_env
+# BELANGRIJK: We verwijderen de map modules om het conflict te voorkomen
+rm -rf airootfs/etc/calamares/modules 2>/dev/null || true
+
 mkdir -p work out build_env
 
-# 2. Basis kopiëren (Releng profiel)
+# 2. Basis kopiëren
 echo "--- 📦 Basis bestanden kopiëren... ---"
 cp -r /usr/share/archiso/configs/releng/* build_env/
 
 # 3. Avelon Configs toepassen
 echo "--- 🎨 Configs en Packages kopiëren... ---"
-# Kopieer jouw airootfs (met Calamares settings, Hyprland configs, etc.)
 cp -r airootfs build_env/
 cp packages.x86_64 build_env/
-# Kopieer de pacman.conf (met EndeavourOS repo)
 cp pacman.conf build_env/
 
-# 4. Check of Calamares bestanden bestaan (Veiligheidscheck)
+# 4. Veiligheidscheck voor Calamares
 if [ ! -d "build_env/airootfs/etc/calamares" ]; then
     echo "❌ FOUT: Calamares configs ontbreken in build_env!"
     exit 1
 fi
 
-# 5. Fix permissies voor scripts en configs
+# 5. Fix permissies
 chmod +x build_env/airootfs/etc/skel/.config/hypr/*.conf 2>/dev/null || true
 
-# --- User & SDDM Config ---
-# Dit zorgt dat je automatisch inlogt in de LIVE omgeving om Calamares te kunnen starten
-echo "--- 👤 Live Gebruiker instellen... ---"
+# --- GEBRUIKER & WACHTWOORD CONFIGURATIE ---
+echo "--- 👤 Gebruiker en Rechten instellen... ---"
 
-# Home map maken
+# A. Home map voorbereiden
 mkdir -p build_env/airootfs/home/avelon
 cp -r build_env/airootfs/etc/skel/. build_env/airootfs/home/avelon/
 
-# Gebruiker aanmaken
+# B. Gebruiker aanmaken (zonder wachtwoord in de database, dat doen we bij boot)
 mkdir -p build_env/airootfs/usr/lib/sysusers.d
 cat <<EOF > build_env/airootfs/usr/lib/sysusers.d/avelon.conf
 u avelon 1000 "Avelon User" /home/avelon /bin/bash
@@ -51,11 +51,37 @@ m avelon wheel
 m avelon video
 EOF
 
-# SDDM activeren
+# C. DE FIX: Sudo ZONDER Wachtwoord (NOPASSWD)
+# Dit zorgt dat Calamares nooit om een wachtwoord vraagt.
+mkdir -p build_env/airootfs/etc/sudoers.d/
+cat <<EOF > build_env/airootfs/etc/sudoers.d/avelon-nopasswd
+avelon ALL=(ALL) NOPASSWD: ALL
+EOF
+chmod 440 build_env/airootfs/etc/sudoers.d/avelon-nopasswd
+
+# D. DE EXTRA FIX: Wachtwoord instellen bij opstarten
+# We maken een one-shot service die bij het booten 'chpasswd' draait.
+mkdir -p build_env/airootfs/etc/systemd/system/
+cat <<EOF > build_env/airootfs/etc/systemd/system/set-password.service
+[Unit]
+Description=Set Avelon Password
+Before=sddm.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c "echo 'avelon:avelon' | chpasswd"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Activeer deze service
+ln -sf /etc/systemd/system/set-password.service build_env/airootfs/etc/systemd/system/multi-user.target.wants/set-password.service
+
+# E. SDDM en Auto-Login
 mkdir -p build_env/airootfs/etc/systemd/system/
 ln -sf /usr/lib/systemd/system/sddm.service build_env/airootfs/etc/systemd/system/display-manager.service
 
-# Auto-Login instellen
 mkdir -p build_env/airootfs/etc/sddm.conf.d
 cat <<EOF > build_env/airootfs/etc/sddm.conf.d/autologin.conf
 [Autologin]
@@ -66,7 +92,7 @@ Relogin=false
 Current=maldives
 EOF
 
-# Profiledef updaten (Permissies)
+# 6. Profiledef updaten
 cat <<EOF > build_env/profiledef.sh
 #!/usr/bin/env bash
 iso_name="avelon-os"
@@ -88,12 +114,12 @@ file_permissions=(
   ["/root"]="0:0:750"
   ["/home/avelon"]="1000:1000:755"
   ["/etc/skel/.config/hypr/hyprland.conf"]="0:0:755"
+  ["/etc/sudoers.d/avelon-nopasswd"]="0:0:440"
 )
 EOF
 
-# 6. START DE BOUW
+# 7. START DE BOUW
 echo "--- 🔨 ISO wordt gebouwd... ---"
-# We gebruiken -C pacman.conf zodat hij de EndeavourOS repo gebruikt
 mkarchiso -v -w work -o out -C pacman.conf build_env/
 
 echo "--- ✅ Klaar! Je ISO staat in de map 'out/' ---"

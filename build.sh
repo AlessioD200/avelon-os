@@ -1,19 +1,19 @@
 #!/bin/bash
-# Avelon OS Build Script - V7 (Installer Fix & Auto-Password)
+# Avelon OS Build Script - V8 (UnpackFS Fix)
 set -e
 
-echo "--- 🚀 Avelon OS Builder V7 gestart ---"
+echo "--- 🚀 Avelon OS Builder V8 gestart ---"
 
 if [ "$EUID" -ne 0 ]; then
   echo "⚠️  Draai dit script als root (sudo ./build.sh)"
   exit 1
 fi
 
-# 1. Schoonmaak (Ook de conflicterende Calamares modules!)
-echo "--- 🧹 Oude bestanden en conflicten opruimen... ---"
+# 1. Schoonmaak
+echo "--- 🧹 Oude bestanden opruimen... ---"
 rm -rf work out build_env
-# BELANGRIJK: We verwijderen de map modules om het conflict te voorkomen
-rm -rf airootfs/etc/calamares/modules 2>/dev/null || true
+# LET OP: We gooien airootfs/etc/calamares/modules NIET meer weg, 
+# want daar staan nu onze fixes in (unpackfs.conf en shellprocess).
 
 mkdir -p work out build_env
 
@@ -27,23 +27,23 @@ cp -r airootfs build_env/
 cp packages.x86_64 build_env/
 cp pacman.conf build_env/
 
-# 4. Veiligheidscheck voor Calamares
-if [ ! -d "build_env/airootfs/etc/calamares" ]; then
-    echo "❌ FOUT: Calamares configs ontbreken in build_env!"
+# 4. Veiligheidschecks
+if [ ! -f "build_env/airootfs/etc/calamares/modules/unpackfs.conf" ]; then
+    echo "❌ FOUT: unpackfs.conf ontbreekt! Calamares zal crashen."
     exit 1
 fi
 
 # 5. Fix permissies
 chmod +x build_env/airootfs/etc/skel/.config/hypr/*.conf 2>/dev/null || true
 
-# --- GEBRUIKER & WACHTWOORD CONFIGURATIE ---
+# --- GEBRUIKER & RECHTEN ---
 echo "--- 👤 Gebruiker en Rechten instellen... ---"
 
-# A. Home map voorbereiden
+# Home map
 mkdir -p build_env/airootfs/home/avelon
 cp -r build_env/airootfs/etc/skel/. build_env/airootfs/home/avelon/
 
-# B. Gebruiker aanmaken (zonder wachtwoord in de database, dat doen we bij boot)
+# User aanmaken
 mkdir -p build_env/airootfs/usr/lib/sysusers.d
 cat <<EOF > build_env/airootfs/usr/lib/sysusers.d/avelon.conf
 u avelon 1000 "Avelon User" /home/avelon /bin/bash
@@ -51,16 +51,14 @@ m avelon wheel
 m avelon video
 EOF
 
-# C. DE FIX: Sudo ZONDER Wachtwoord (NOPASSWD)
-# Dit zorgt dat Calamares nooit om een wachtwoord vraagt.
+# Sudo NOPASSWD
 mkdir -p build_env/airootfs/etc/sudoers.d/
 cat <<EOF > build_env/airootfs/etc/sudoers.d/avelon-nopasswd
 avelon ALL=(ALL) NOPASSWD: ALL
 EOF
 chmod 440 build_env/airootfs/etc/sudoers.d/avelon-nopasswd
 
-# D. DE EXTRA FIX: Wachtwoord instellen bij opstarten
-# We maken een one-shot service die bij het booten 'chpasswd' draait.
+# Wachtwoord script
 mkdir -p build_env/airootfs/etc/systemd/system/
 cat <<EOF > build_env/airootfs/etc/systemd/system/set-password.service
 [Unit]
@@ -74,11 +72,9 @@ ExecStart=/bin/bash -c "echo 'avelon:avelon' | chpasswd"
 [Install]
 WantedBy=multi-user.target
 EOF
-
-# Activeer deze service
 ln -sf /etc/systemd/system/set-password.service build_env/airootfs/etc/systemd/system/multi-user.target.wants/set-password.service
 
-# E. SDDM en Auto-Login
+# SDDM & Auto-login
 mkdir -p build_env/airootfs/etc/systemd/system/
 ln -sf /usr/lib/systemd/system/sddm.service build_env/airootfs/etc/systemd/system/display-manager.service
 
@@ -92,7 +88,7 @@ Relogin=false
 Current=maldives
 EOF
 
-# 6. Profiledef updaten
+# Profiledef
 cat <<EOF > build_env/profiledef.sh
 #!/usr/bin/env bash
 iso_name="avelon-os"
@@ -118,7 +114,7 @@ file_permissions=(
 )
 EOF
 
-# 7. START DE BOUW
+# 6. START DE BOUW
 echo "--- 🔨 ISO wordt gebouwd... ---"
 mkarchiso -v -w work -o out -C pacman.conf build_env/
 

@@ -1,8 +1,8 @@
 #!/bin/bash
-# Avelon OS Build Script - V8 (UnpackFS Fix)
+# Avelon OS Build Script - V9 (Conflict Fix)
 set -e
 
-echo "--- 🚀 Avelon OS Builder V8 gestart ---"
+echo "--- 🚀 Avelon OS Builder V9 gestart ---"
 
 if [ "$EUID" -ne 0 ]; then
   echo "⚠️  Draai dit script als root (sudo ./build.sh)"
@@ -12,9 +12,6 @@ fi
 # 1. Schoonmaak
 echo "--- 🧹 Oude bestanden opruimen... ---"
 rm -rf work out build_env
-# LET OP: We gooien airootfs/etc/calamares/modules NIET meer weg, 
-# want daar staan nu onze fixes in (unpackfs.conf en shellprocess).
-
 mkdir -p work out build_env
 
 # 2. Basis kopiëren
@@ -28,8 +25,9 @@ cp packages.x86_64 build_env/
 cp pacman.conf build_env/
 
 # 4. Veiligheidschecks
-if [ ! -f "build_env/airootfs/etc/calamares/modules/unpackfs.conf" ]; then
-    echo "❌ FOUT: unpackfs.conf ontbreekt! Calamares zal crashen."
+# We checken nu op de _fix bestandsnaam!
+if [ ! -f "build_env/airootfs/etc/calamares/modules/unpackfs_fix.conf" ]; then
+    echo "❌ FOUT: unpackfs_fix.conf ontbreekt! Heb je Stap 1 wel gedaan?"
     exit 1
 fi
 
@@ -58,21 +56,24 @@ avelon ALL=(ALL) NOPASSWD: ALL
 EOF
 chmod 440 build_env/airootfs/etc/sudoers.d/avelon-nopasswd
 
-# Wachtwoord script
+# --- OPSTART SCRIPT (Wachtwoord + Calamares Fix) ---
+# Hier gebeurt de magie: we zetten het wachtwoord EN we wisselen het config bestand om.
 mkdir -p build_env/airootfs/etc/systemd/system/
-cat <<EOF > build_env/airootfs/etc/systemd/system/set-password.service
+cat <<EOF > build_env/airootfs/etc/systemd/system/setup-avelon.service
 [Unit]
-Description=Set Avelon Password
+Description=Setup Avelon Environment
 Before=sddm.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/bash -c "echo 'avelon:avelon' | chpasswd"
+# 1. Zet wachtwoord op 'avelon'
+# 2. Overschrijf de standaard unpackfs.conf met onze FIX versie
+ExecStart=/bin/bash -c "echo 'avelon:avelon' | chpasswd; mv /etc/calamares/modules/unpackfs_fix.conf /etc/calamares/modules/unpackfs.conf"
 
 [Install]
 WantedBy=multi-user.target
 EOF
-ln -sf /etc/systemd/system/set-password.service build_env/airootfs/etc/systemd/system/multi-user.target.wants/set-password.service
+ln -sf /etc/systemd/system/setup-avelon.service build_env/airootfs/etc/systemd/system/multi-user.target.wants/setup-avelon.service
 
 # SDDM & Auto-login
 mkdir -p build_env/airootfs/etc/systemd/system/

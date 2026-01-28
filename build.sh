@@ -1,8 +1,8 @@
 #!/bin/bash
-# Avelon OS Build Script - V11 (De Totale Fix)
+# Avelon OS Build Script - V12 (Mirrorlist & Total Fix)
 set -e
 
-echo "--- 🚀 Avelon OS Builder V11 gestart ---"
+echo "--- 🚀 Avelon OS Builder V12 gestart ---"
 
 if [ "$EUID" -ne 0 ]; then
   echo "⚠️  Draai dit script als root (sudo ./build.sh)"
@@ -24,9 +24,14 @@ cp -r airootfs build_env/
 cp packages.x86_64 build_env/
 cp pacman.conf build_env/
 
-# 4. FIXES GENEREREN (De magische bestanden)
+# 4. FIXES GENEREREN
 echo "--- 🔧 Configuraties repareren... ---"
 mkdir -p build_env/airootfs/etc/calamares/modules
+mkdir -p build_env/airootfs/etc/pacman.d
+
+# FIX 0: DE MIRRORLIST FIX (Het internet probleem oplossen)
+# We dwingen de ISO om de stabiele Geo-mirror te gebruiken.
+echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > build_env/airootfs/etc/pacman.d/mirrorlist
 
 # FIX A: Unpackfs (Het juiste pad!)
 cat <<EOF > build_env/airootfs/etc/calamares/modules/unpackfs_fix.conf
@@ -74,6 +79,7 @@ script:
     - command: "rm -f /etc/mkinitcpio.d/linux-zen.preset"
     - command: "pacman-key --init"
     - command: "pacman-key --populate archlinux"
+    # Omdat we de mirrorlist hebben gefixt, zal dit nu wel werken:
     - command: "pacman -Sy --noconfirm linux linux-firmware"
     - command: "mkinitcpio -p linux"
 EOF
@@ -142,7 +148,7 @@ m avelon wheel
 m avelon video
 EOF
 
-# Sudo NOPASSWD (Voor Calamares zonder wachtwoord)
+# Sudo NOPASSWD
 mkdir -p build_env/airootfs/etc/sudoers.d/
 cat <<EOF > build_env/airootfs/etc/sudoers.d/avelon-nopasswd
 avelon ALL=(ALL) NOPASSWD: ALL
@@ -150,8 +156,6 @@ EOF
 chmod 440 build_env/airootfs/etc/sudoers.d/avelon-nopasswd
 
 # --- OPSTART SCRIPT (De Wissel-truc & Wachtwoord) ---
-# Dit script draait bij het opstarten van de ISO.
-# Het vervangt de standaard configs door onze _fix configs.
 mkdir -p build_env/airootfs/etc/systemd/system/
 cat <<EOF > build_env/airootfs/etc/systemd/system/setup-avelon.service
 [Unit]
@@ -160,6 +164,7 @@ Before=sddm.service
 
 [Service]
 Type=oneshot
+# Wissel alle bestanden om naar de juiste plek
 ExecStart=/bin/bash -c "echo 'avelon:avelon' | chpasswd; mv /etc/calamares/modules/unpackfs_fix.conf /etc/calamares/modules/unpackfs.conf; mv /etc/calamares/modules/bootloader_fix.conf /etc/calamares/modules/bootloader.conf; mv /etc/calamares/modules/services-systemd_fix.conf /etc/calamares/modules/services-systemd.conf; mv /etc/calamares/modules/shellprocess-initcpio_fix.conf /etc/calamares/modules/shellprocess-initcpio.conf; mv /etc/calamares/settings_fix.conf /etc/calamares/settings.conf"
 
 [Install]

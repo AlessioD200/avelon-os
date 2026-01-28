@@ -1,8 +1,8 @@
 #!/bin/bash
-# Avelon OS Build Script - V9 (Conflict Fix)
+# Avelon OS Build Script - V11 (De Totale Fix)
 set -e
 
-echo "--- 🚀 Avelon OS Builder V9 gestart ---"
+echo "--- 🚀 Avelon OS Builder V11 gestart ---"
 
 if [ "$EUID" -ne 0 ]; then
   echo "⚠️  Draai dit script als root (sudo ./build.sh)"
@@ -24,14 +24,107 @@ cp -r airootfs build_env/
 cp packages.x86_64 build_env/
 cp pacman.conf build_env/
 
-# 4. Veiligheidschecks
-# We checken nu op de _fix bestandsnaam!
-if [ ! -f "build_env/airootfs/etc/calamares/modules/unpackfs_fix.conf" ]; then
-    echo "❌ FOUT: unpackfs_fix.conf ontbreekt! Heb je Stap 1 wel gedaan?"
-    exit 1
-fi
+# 4. FIXES GENEREREN (De magische bestanden)
+echo "--- 🔧 Configuraties repareren... ---"
+mkdir -p build_env/airootfs/etc/calamares/modules
 
-# 5. Fix permissies
+# FIX A: Unpackfs (Het juiste pad!)
+cat <<EOF > build_env/airootfs/etc/calamares/modules/unpackfs_fix.conf
+unpack:
+    -   source: "/run/archiso/bootmnt/arch/x86_64/airootfs.sfs"
+        sourcefs: "squashfs"
+        destination: ""
+EOF
+
+# FIX B: Bootloader (Voorkom crash)
+cat <<EOF > build_env/airootfs/etc/calamares/modules/bootloader_fix.conf
+efiBootLoader: "grub"
+kernel: "/vmlinuz-linux"
+img: "/initramfs-linux.img"
+fallback: "/initramfs-linux-fallback.img"
+timeout: "5"
+bootloaderEntryName: "Avelon OS"
+grubInstall: "grub-install"
+grubMkconfig: "grub-mkconfig"
+grubCfg: "/boot/grub/grub.cfg"
+grubProbe: "grub-probe"
+efiBootMgr: "efibootmgr"
+installEFIFallback: true
+EOF
+
+# FIX C: Services (Geen vmware/firewall onzin)
+cat <<EOF > build_env/airootfs/etc/calamares/modules/services-systemd_fix.conf
+units:
+  - name: "NetworkManager"
+    action: "enable"
+    mandatory: true
+  - name: "sddm"
+    action: "enable"
+    mandatory: true
+EOF
+
+# FIX D: De Slimme Kernel Bouwer (Downloadt linux en bouwt images)
+cat <<EOF > build_env/airootfs/etc/calamares/modules/shellprocess-initcpio_fix.conf
+i18n:
+    name: "Linux Kernels installeren en genereren..."
+dontChroot: false
+timeout: 600
+script:
+    - command: "rm -f /etc/mkinitcpio.d/archiso.preset"
+    - command: "rm -f /etc/mkinitcpio.d/linux-zen.preset"
+    - command: "pacman-key --init"
+    - command: "pacman-key --populate archlinux"
+    - command: "pacman -Sy --noconfirm linux linux-firmware"
+    - command: "mkinitcpio -p linux"
+EOF
+
+# FIX E: Settings (Volgorde corrigeren)
+cat <<EOF > build_env/airootfs/etc/calamares/settings_fix.conf
+modules-search: [ local ]
+instances:
+- id:       initcpio
+  module:   shellprocess
+  config:   shellprocess-initcpio.conf
+
+sequence:
+- show:
+  - welcome
+  - locale
+  - keyboard
+  - partition
+  - users
+  - summary
+- exec:
+  - partition
+  - mount
+  - unpackfs
+  - machineid
+  - fstab
+  - locale
+  - keyboard
+  - localecfg
+  - users
+  - networkcfg
+  - hwclock
+  - services-systemd
+  - shellprocess@initcpio
+  - grubcfg
+  - bootloader
+  - umount
+- show:
+  - finished
+
+branding: avelon
+prompt-install: true
+dont-chroot: false
+oem-setup: false
+disable-cancel: false
+disable-cancel-during-exec: true
+hide-back-and-next-during-exec: true
+quit-at-end: false
+EOF
+
+# 5. Fix permissies Hyprland
 chmod +x build_env/airootfs/etc/skel/.config/hypr/*.conf 2>/dev/null || true
 
 # --- GEBRUIKER & RECHTEN ---
@@ -49,26 +142,25 @@ m avelon wheel
 m avelon video
 EOF
 
-# Sudo NOPASSWD
+# Sudo NOPASSWD (Voor Calamares zonder wachtwoord)
 mkdir -p build_env/airootfs/etc/sudoers.d/
 cat <<EOF > build_env/airootfs/etc/sudoers.d/avelon-nopasswd
 avelon ALL=(ALL) NOPASSWD: ALL
 EOF
 chmod 440 build_env/airootfs/etc/sudoers.d/avelon-nopasswd
 
-# --- OPSTART SCRIPT (Wachtwoord + Calamares Fix) ---
-# Hier gebeurt de magie: we zetten het wachtwoord EN we wisselen het config bestand om.
+# --- OPSTART SCRIPT (De Wissel-truc & Wachtwoord) ---
+# Dit script draait bij het opstarten van de ISO.
+# Het vervangt de standaard configs door onze _fix configs.
 mkdir -p build_env/airootfs/etc/systemd/system/
 cat <<EOF > build_env/airootfs/etc/systemd/system/setup-avelon.service
 [Unit]
-Description=Setup Avelon Environment
+Description=Setup Avelon Environment & Fix Calamares
 Before=sddm.service
 
 [Service]
 Type=oneshot
-# 1. Zet wachtwoord op 'avelon'
-# 2. Overschrijf de standaard unpackfs.conf met onze FIX versie
-ExecStart=/bin/bash -c "echo 'avelon:avelon' | chpasswd; mv /etc/calamares/modules/unpackfs_fix.conf /etc/calamares/modules/unpackfs.conf"
+ExecStart=/bin/bash -c "echo 'avelon:avelon' | chpasswd; mv /etc/calamares/modules/unpackfs_fix.conf /etc/calamares/modules/unpackfs.conf; mv /etc/calamares/modules/bootloader_fix.conf /etc/calamares/modules/bootloader.conf; mv /etc/calamares/modules/services-systemd_fix.conf /etc/calamares/modules/services-systemd.conf; mv /etc/calamares/modules/shellprocess-initcpio_fix.conf /etc/calamares/modules/shellprocess-initcpio.conf; mv /etc/calamares/settings_fix.conf /etc/calamares/settings.conf"
 
 [Install]
 WantedBy=multi-user.target
